@@ -82,7 +82,7 @@ def plot_trajs(t, sector):
 
     # -- dealing with the grid --
 
-    nb_cols = 3
+    nb_cols = 5
     nb_lines = (1 + n_clusters_) // nb_cols + (((1 + n_clusters_) % nb_cols) > 0)
 
     def ax_iter(axes):
@@ -105,7 +105,7 @@ def plot_trajs(t, sector):
             tc.plot(
                 ax_, color=colors[cluster],
             )
-            ax_.set_title(f'{tc.data.atlitude.mean()}')
+            ax_.set_title(f'{tc.data.altitude.mean()/100:.0f}\n{len(tc)}')
 
         if sector is not None:
                 ax_.set_extent(sector)
