@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import numpy as np
 import pickle
-from tqdm import tqdm
+from tqdm.autonotebook import tqdm
 
 import torch
 from torch import nn, from_numpy
@@ -11,6 +11,7 @@ from torch.autograd import Variable
 from .autoencoder import Autoencoder
 from .utils import kl_divergence, make_P
 
+import matplotlib.pyplot as plt
 from sklearn.cluster import DBSCAN
 
 
@@ -26,7 +27,8 @@ class AutoencoderTSNE:
         n_iter=5_000,
         algo_clustering=DBSCAN(eps=0.3, min_samples=7),
         filename_network=None,
-        distance_trajectory='euclidean'
+        distance_trajectory='euclidean',
+        verbose=True
     ):
         self.gpu = gpu
         self.arch = arch
@@ -37,6 +39,7 @@ class AutoencoderTSNE:
         self.n_iter = n_iter
         self.filename_network = filename_network
         self.distance_trajectory = distance_trajectory
+        self.verbose = verbose
 
     def fit(self, X):
         P = torch.tensor(make_P(X, metric=self.distance_trajectory)).float().cuda(self.gpu)
@@ -49,6 +52,7 @@ class AutoencoderTSNE:
         optimizer = torch.optim.Adam(model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         criterion = nn.MSELoss()
 
+        d, k = [], []
         v = Variable(from_numpy(X.astype(np.float32))).cuda(self.gpu)
         for epoch in tqdm(range(self.n_iter)):
 
@@ -63,10 +67,17 @@ class AutoencoderTSNE:
             loss.backward()
             optimizer.step()
 
+            d.append(dist.item())
+            k.append(kl.item())
+
 
         if self.filename_network is not None:
             with open(self.filename_network, 'wb') as f:
                 pickle.dump(model.cpu(), f)
+
+        if self.verbose:
+            plt.plot(d)
+            plt.plot(k)
 
         lat = model.cpu().encoder(v.cpu()).detach().numpy()
         self.labels_ = self.algo_clustering.fit_predict(lat)
