@@ -20,7 +20,7 @@ class AutoencoderTSNE:
         self,
         *,
         gpu=1,
-        arch=None,
+        network=None,
         learning_rate=0.001,
         weight_decay=0.01,
         lambda_kl=0.5,
@@ -31,7 +31,7 @@ class AutoencoderTSNE:
         verbose=True
     ):
         self.gpu = gpu
-        self.arch = arch
+        self.network= network
         self.lr = learning_rate
         self.weight_decay = weight_decay
         self.lambda_kl = lambda_kl
@@ -46,9 +46,13 @@ class AutoencoderTSNE:
 
         dim_input = X.shape[1]
         # if network's architecture not specified, use (n, n/2, 5)
-        arch = self.arch if self.arch is not None else (dim_input, dim_input // 2, 2)
+        model = self.network if self.network is not None else Autoencoder((dim_input, dim_input // 2, 2))
+        model.cuda(self.gpu)
 
-        model = Autoencoder(arch).cuda(self.gpu)
+        # dirty hack
+        model_dim_input = next(model.parameters()).size()[1]
+        assert model_dim_input == dim_input
+
         optimizer = torch.optim.Adam(model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         criterion = nn.MSELoss()
 
