@@ -26,7 +26,6 @@ class AutoencoderTSNE:
         lambda_kl=0.5,
         n_iter=5_000,
         algo_clustering=DBSCAN(eps=0.3, min_samples=7),
-        filename_network=None,
         distance_trajectory='euclidean',
         verbose=True
     ):
@@ -37,7 +36,6 @@ class AutoencoderTSNE:
         self.lambda_kl = lambda_kl
         self.algo_clustering = algo_clustering
         self.n_iter = n_iter
-        self.filename_network = filename_network
         self.distance_trajectory = distance_trajectory
         self.verbose = verbose
 
@@ -75,13 +73,23 @@ class AutoencoderTSNE:
             k.append(kl.item())
 
 
-        if self.filename_network is not None:
-            with open(self.filename_network, 'wb') as f:
-                pickle.dump(model.cpu(), f)
-
         if self.verbose:
             plt.plot(d)
             plt.plot(k)
 
         lat = model.cpu().encoder(v.cpu()).detach().numpy()
         self.labels_ = self.algo_clustering.fit_predict(lat)
+
+
+    def to_pickle(self, filename):
+        '''Save the current AutoencoderTSNE in a pickle file named 'filename'
+        '''
+        with open(filename, 'wb') as f:
+            pickle.dump(self, f)
+
+    @classmethod
+    def from_file(filename):
+        '''Load a file from pickle
+        '''
+        with open(filname, 'rb') as f:
+            return pickle.load(f)
