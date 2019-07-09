@@ -19,7 +19,6 @@ def build_decoder(dims):
     return build_net(dims)[:-1] + [nn.Sigmoid()]
 
 
-
 class Autoencoder(nn.Module):
     def __init__(self, layers):
         """Build a new encoder using the architecture specified with
@@ -32,7 +31,7 @@ class Autoencoder(nn.Module):
             arch_decoder = tuple(reversed(layers))
         else:
             latent_index = np.argmin(layers)
-            arch_encoder = layers[:i+1]
+            arch_encoder = layers[: i + 1]
             arch_decoder = layers[i:]
 
         self.encoder = nn.Sequential(*build_encoder(arch_encoder))

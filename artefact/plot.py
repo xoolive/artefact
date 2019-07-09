@@ -1,7 +1,7 @@
-'''
+"""
 utility module to plot clusters from:
 https://github.com/lbasora/sectflow
-'''
+"""
 from itertools import cycle, islice
 
 import matplotlib.pyplot as plt
@@ -68,6 +68,7 @@ def annotate3D(ax, s, *args, **kwargs):
     tag = Annotation3D(s, *args, **kwargs)
     ax.add_artist(tag)
 
+
 def plot_trajs(t, sector):
     n_clusters_ = int(1 + t.data.cluster.max())
 
@@ -83,7 +84,9 @@ def plot_trajs(t, sector):
     # -- dealing with the grid --
 
     nb_cols = 5
-    nb_lines = (1 + n_clusters_) // nb_cols + (((1 + n_clusters_) % nb_cols) > 0)
+    nb_lines = (1 + n_clusters_) // nb_cols + (
+        ((1 + n_clusters_) % nb_cols) > 0
+    )
 
     def ax_iter(axes):
         if len(axes.shape) == 1:
@@ -102,14 +105,12 @@ def plot_trajs(t, sector):
             ax_.add_feature(rivers())
 
             tc = t.query(f"cluster == {cluster}")
-            tc.plot(
-                ax_, color=colors[cluster],
-            )
-            ax_.set_title(f'{tc.data.altitude.mean()/100:.0f}\n{len(tc)}')
+            tc.plot(ax_, color=colors[cluster])
+            ax_.set_title(f"{tc.data.altitude.mean()/100:.0f}\n{len(tc)}")
 
         if sector is not None:
-                ax_.set_extent(sector)
-                sector.plot(ax_, lw=2)
+            ax_.set_extent(sector)
+            sector.plot(ax_, lw=2)
 
 
 def clusters_plot2d(
@@ -180,12 +181,13 @@ def clusters_plot2d(
 
 
 def clusters_plot3d(
-    sector, t,  
+    sector,
+    t,
     nb_samples,
     projection,
-    scaler=None, 
-    plot_trajs=False, 
-    plot_clust=None, 
+    scaler=None,
+    plot_trajs=False,
+    plot_clust=None,
     video=True,
 ):
     coords = np.stack(sector.flatten().exterior.coords)
@@ -201,11 +203,11 @@ def clusters_plot3d(
     lower = min(Lower)
     if upper == np.inf:
         upper = 45000
-    
+
     with plt.style.context("traffic"):
         fig, ax = plt.subplots(subplot_kw=dict(projection="3d"))
-        #fig = plt.figure()
-        #ax = plt.axes(projection="3d")
+        # fig = plt.figure()
+        # ax = plt.axes(projection="3d")
         ax.set_zlim(bottom=0, top=upper)
         ax.set_xlim(lonMin, lonMax)
         ax.set_ylim(latMin, latMax)
@@ -247,7 +249,7 @@ def clusters_plot3d(
 
         for cid in plot_clust:
             tc = t.query(f"cluster=={cid}")
-            if plot_trajs:            
+            if plot_trajs:
                 for flight in tc:
                     lon = list(flight.data["longitude"])
                     lat = list(flight.data["latitude"])
@@ -267,7 +269,7 @@ def clusters_plot3d(
                 lw = 7
             if cid != -1 and L[cid] >= 0.01:
                 cent = tc.centroid(
-                        nb_samples, projection=projection, transformer=scaler
+                    nb_samples, projection=projection, transformer=scaler
                 ).data
                 lon = list(cent["longitude"])
                 lat = list(cent["latitude"])

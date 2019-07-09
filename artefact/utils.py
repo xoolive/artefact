@@ -8,8 +8,10 @@ from scipy.spatial.distance import squareform
 
 MACHINE_EPSILON_NP = np.finfo(np.float32).eps
 
+
 def delta_max(x, y, *args):
     return np.max(np.abs(x - y))
+
 
 def _joint_probabilities(distances, desired_perplexity, verbose=0):
     distances = distances.astype(np.float32, copy=True)
@@ -22,7 +24,7 @@ def _joint_probabilities(distances, desired_perplexity, verbose=0):
     return P
 
 
-def make_P(X, perplexity=30, metric='euclidiean'):
+def make_P(X, perplexity=30, metric="euclidiean"):
     distances = pairwise_distances(X, metric=metric)
 
     P = _joint_probabilities(distances, perplexity)
@@ -34,10 +36,9 @@ def make_P(X, perplexity=30, metric='euclidiean'):
     return P
 
 
-
 def kl_divergence(lat, P, gpu):
     dist = torch.nn.functional.pdist(lat.cpu(), 2).cuda(gpu)
-    dist = dist + 1.
+    dist = dist + 1.0
     dist = 1 / dist
     Q = dist / (torch.sum(dist))
 
