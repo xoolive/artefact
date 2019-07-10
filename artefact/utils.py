@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-'''
+"""
 `_joint_probabilities` and `make_P` from the sklearn librairy:
 https://github.com/scikit-learn/scikit-learn/blob/7813f7efb/sklearn/manifold/t_sne.py
-'''
+"""
 
 import torch
 import numpy as np

@@ -10,7 +10,7 @@ from matplotlib import animation
 from matplotlib.patches import FancyArrowPatch
 from matplotlib.text import Annotation
 from mpl_toolkits.mplot3d import Axes3D, proj3d
-from tqdm import tqdm
+from tqdm.autonotebook import tqdm
 from traffic.drawing import Lambert93, PlateCarree, countries, rivers
 
 
@@ -69,7 +69,7 @@ def annotate3D(ax, s, *args, **kwargs):
     ax.add_artist(tag)
 
 
-def plot_trajs(t, sector):
+def plot_trajs(t, sector, proj=Labert93()):
     n_clusters_ = int(1 + t.data.cluster.max())
 
     #  -- dealing with colours --
@@ -97,20 +97,25 @@ def plot_trajs(t, sector):
 
     with plt.style.context("traffic"):
         fig, ax = plt.subplots(
-            nb_lines, nb_cols, subplot_kw=dict(projection=Lambert93())
+            nb_lines,
+            nb_cols,
+            subplot_kw=dict(projection=proj),
+            figsize=(15, 25)
         )
 
-        for cluster, ax_ in zip(range(-1, n_clusters_), ax_iter(ax)):
+        for cluster, ax_ in tqdm(zip(range(-1, n_clusters_), ax_iter(ax))):
             ax_.add_feature(countries())
             ax_.add_feature(rivers())
 
             tc = t.query(f"cluster == {cluster}")
             tc.plot(ax_, color=colors[cluster])
-            ax_.set_title(f"{tc.data.altitude.mean()/100:.0f}\n{len(tc)}")
+            vr = tc.data.vertical_rate.mean()
+            evolution = '=' if abs(vr) < 200 else '↗' if vr > 0 else '↘'
+            ax_.set_title(f"{tc.data.altitude.mean()/100:.0f}FL{evolution}\nlen cluster:{len(tc)}")
 
-        if sector is not None:
-            ax_.set_extent(sector)
-            sector.plot(ax_, lw=2)
+            if sector is not None:
+                ax_.set_extent(sector)
+                sector.plot(ax_, lw=2)
 
 
 def clusters_plot2d(
