@@ -86,8 +86,14 @@ class AutoencoderTSNE:
         self.model.cpu()
 
         if self.verbose:
+            plt.figure(1)
+            plt.subplot(121)
             plt.plot(d)
+            plt.title('reco err')
+
+            plt.subplot(122)
             plt.plot(k)
+            plt.title('d_kl')
 
         lat = self.model.encoder(v.cpu()).detach().numpy()
         self.labels_ = self.algo_clustering.fit_predict(lat)
