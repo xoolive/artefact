@@ -38,8 +38,48 @@ class AutoencoderTSNE:
         self.n_iter = n_iter
         self.distance_trajectory = distance_trajectory
         self.verbose = verbose
+        self.is_trained = False
 
     def fit(self, X):
+
+        if not self.is_trained:
+            reco_err, kls = self.train(X)
+
+            if self.verbose:
+                plt.figure(1)
+                plt.subplot(121)
+                plt.plot(reco_err)
+                plt.title("reco err")
+
+                plt.subplot(122)
+                plt.plot(kls)
+                plt.title("d_kl")
+
+        lat = self.model.encoder(v.cpu()).detach().numpy()
+        self.labels_ = self.algo_clustering.fit_predict(lat)
+
+    def to_pickle(self, filename):
+        """Save the current AutoencoderTSNE in a pickle file named 'filename'
+        """
+        with open(filename, "wb") as f:
+            pickle.dump(self, f)
+
+    @classmethod
+    def from_file(cls, filename):
+        """Load a file from pickle
+        """
+        with open(filename, "rb") as f:
+            return pickle.load(f)
+
+    def score_samples(self, X):
+        """Returns a numpy array containing the reconstruction error associated with each flight
+        """
+        v = Variable(from_numpy(X.astype(np.float32)))
+        output = self.network(v)
+        return nn.MSELoss(reduction="none")(output, v).sum(1).detach().numpy()
+
+    def train(self, X):
+
         P = (
             torch.tensor(make_P(X, metric=self.distance_trajectory))
             .float()
@@ -64,7 +104,7 @@ class AutoencoderTSNE:
         )
         criterion = nn.MSELoss()
 
-        d, k = [], []
+        mses, kls = [], []
         v = Variable(from_numpy(X.astype(np.float32))).cuda(self.gpu)
         for epoch in tqdm(range(self.n_iter)):
 
@@ -79,34 +119,11 @@ class AutoencoderTSNE:
             loss.backward()
             optimizer.step()
 
-            d.append(dist.item())
-            k.append(kl.item())
+            mses.append(dist.item())
+            kls.append(kl.item())
 
         # disable gpu after training
         self.model.cpu()
 
-        if self.verbose:
-            plt.figure(1)
-            plt.subplot(121)
-            plt.plot(d)
-            plt.title('reco err')
-
-            plt.subplot(122)
-            plt.plot(k)
-            plt.title('d_kl')
-
-        lat = self.model.encoder(v.cpu()).detach().numpy()
-        self.labels_ = self.algo_clustering.fit_predict(lat)
-
-    def to_pickle(self, filename):
-        """Save the current AutoencoderTSNE in a pickle file named 'filename'
-        """
-        with open(filename, "wb") as f:
-            pickle.dump(self, f)
-
-    @classmethod
-    def from_file(filename):
-        """Load a file from pickle
-        """
-        with open(filname, "rb") as f:
-            return pickle.load(f)
+        self.is_trained = True
+        return mses, kls
