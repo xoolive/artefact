@@ -69,7 +69,7 @@ def annotate3D(ax, s, *args, **kwargs):
     ax.add_artist(tag)
 
 
-def plot_trajs(t, sector, proj=Labert93()):
+def plot_trajs(t, sector, proj=Lambert93()):
     n_clusters_ = int(1 + t.data.cluster.max())
 
     #  -- dealing with colours --
