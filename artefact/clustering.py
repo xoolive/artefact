@@ -58,6 +58,7 @@ class AutoencoderTSNE:
                 plt.plot(kls)
                 plt.title("d_kl")
 
+        v = Variable(from_numpy(X.astype(np.float32)))
         lat = self.model.encoder(v.cpu()).detach().numpy()
         self.labels_ = self.algo_clustering.fit_predict(lat)
 
@@ -78,7 +79,7 @@ class AutoencoderTSNE:
         """Returns a numpy array containing the reconstruction error associated with each flight
         """
         v = Variable(from_numpy(X.astype(np.float32)))
-        output = self.network(v)
+        output = self.model(v)
         return nn.MSELoss(reduction="none")(output, v).sum(1).detach().numpy()
 
     def train(self, X):
