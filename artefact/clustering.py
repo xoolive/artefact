@@ -19,8 +19,8 @@ class AutoencoderTSNE:
     def __init__(
         self,
         *,
-        gpu=1,
-        model=None,
+        gpu=None,
+        model=0,
         learning_rate=0.001,
         weight_decay=0.01,
         lambda_kl=0.5,
@@ -29,6 +29,9 @@ class AutoencoderTSNE:
         distance_trajectory="euclidean",
         verbose=True,
     ):
+        # for now use the gpu 0 by default
+        # TODO: handle the no gpu available case
+        assert gpu is not None 
         self.gpu = gpu
         self.model = model
         self.lr = learning_rate
