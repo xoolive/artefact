@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import numpy as np
+from random import sample
 import pickle
 from tqdm.autonotebook import tqdm
 
@@ -22,9 +23,11 @@ class AutoencoderTSNE:
         model=None,
         learning_rate=0.001,
         weight_decay=0.01,
-        lambda_kl=0.5,
+        lambda_kl=0.05,
         n_iter=5000,
         algo_clustering=DBSCAN(eps=0.3, min_samples=7),
+        batch_size=500,
+        nb_batches=10,
         distance_trajectory="euclidean",
     ):
         # for now use the gpu 0 by default
@@ -40,9 +43,16 @@ class AutoencoderTSNE:
         self.distance_trajectory = distance_trajectory
         self.is_trained = False
         self.reco_err, self.kls = [], []
+        self.batch_size = batch_size
+        self.nb_batches = nb_batches
+        self.X = None
+        self.hash_X = None
 
     def fit(self, X):
-        if not self.is_trained:
+        h_X = hash(X.tobytes())
+        if h_X != self.hash_X:
+            self.X = X
+            self.hash_X = h_X
             self.train(X)
 
         v = Variable(from_numpy(X.astype(np.float32)))
@@ -69,51 +79,52 @@ class AutoencoderTSNE:
         output = self.model(v)
         return nn.MSELoss(reduction="none")(output, v).sum(1).detach().numpy()
 
-
     def train(self, X):
+        batches = self.nb_batches
+        for _ in tqdm(range(self.nb_batches)):
+            idx = np.random.randint(len(X), size=self.batch_size)
+            batch = X[idx, :]
+            P = (
+                torch.tensor(make_P(batch, metric=self.distance_trajectory))
+                .float()
+                .cuda(self.gpu)
+            )
+            # t[sample(t.flight_ids, 1000)]
+            dim_input = batch.shape[1]
+            # if network's architecture not specified, use (n, n/2, 5)
+            if self.model is None:
+                self.model = Autoencoder((dim_input, dim_input // 2, 2))
 
-        P = (
-            torch.tensor(make_P(X, metric=self.distance_trajectory))
-            .float()
-            .cuda(self.gpu)
-        )
+            self.model.cuda(self.gpu)
 
-        dim_input = X.shape[1]
-        # if network's architecture not specified, use (n, n/2, 5)
-        self.model = (
-            self.model
-            if self.model is not None
-            else Autoencoder((dim_input, dim_input // 2, 2))
-        )
-        self.model.cuda(self.gpu)
+            # dirty hack
+            model_dim_input = next(self.model.parameters()).size()[1]
+            assert model_dim_input == dim_input
 
-        # dirty hack
-        model_dim_input = next(self.model.parameters()).size()[1]
-        assert model_dim_input == dim_input
+            optimizer = torch.optim.Adam(
+                self.model.parameters(),
+                lr=self.lr,
+                weight_decay=self.weight_decay,
+            )
+            criterion = nn.MSELoss()
 
-        optimizer = torch.optim.Adam(
-            self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay
-        )
-        criterion = nn.MSELoss()
+            v = Variable(from_numpy(batch.astype(np.float32))).cuda(self.gpu)
+            for epoch in range(self.n_iter):
 
-        v = Variable(from_numpy(X.astype(np.float32))).cuda(self.gpu)
-        for epoch in tqdm(range(self.n_iter)):
+                lat = self.model.encoder(v)
+                output = self.model.decoder(lat)
 
-            lat = self.model.encoder(v)
-            output = self.model.decoder(lat)
+                dist = criterion(output, v)
+                kl = kl_divergence(lat, P, self.gpu)
+                loss = dist + self.lambda_kl * kl
 
-            dist = criterion(output, v)
-            kl = kl_divergence(lat, P, self.gpu)
-            loss = dist + self.lambda_kl * kl
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-            self.reco_err.append(dist.item())
-            self.kls.append(kl.item())
+                self.reco_err.append(dist.item())
+                self.kls.append(kl.item())
 
         # disable gpu after training
         self.model.cpu()
         self.is_trained = True
-
