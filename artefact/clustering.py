@@ -11,7 +11,6 @@ from torch.autograd import Variable
 from .autoencoder import Autoencoder
 from .utils import kl_divergence, make_P
 
-import matplotlib.pyplot as plt
 from sklearn.cluster import DBSCAN
 
 
@@ -19,19 +18,18 @@ class AutoencoderTSNE:
     def __init__(
         self,
         *,
-        gpu=None,
-        model=0,
+        gpu=0,
+        model=None,
         learning_rate=0.001,
         weight_decay=0.01,
         lambda_kl=0.5,
         n_iter=5000,
         algo_clustering=DBSCAN(eps=0.3, min_samples=7),
         distance_trajectory="euclidean",
-        verbose=True,
     ):
         # for now use the gpu 0 by default
         # TODO: handle the no gpu available case
-        assert gpu is not None 
+        assert gpu is not None
         self.gpu = gpu
         self.model = model
         self.lr = learning_rate
@@ -40,23 +38,12 @@ class AutoencoderTSNE:
         self.algo_clustering = algo_clustering
         self.n_iter = n_iter
         self.distance_trajectory = distance_trajectory
-        self.verbose = verbose
         self.is_trained = False
+        self.reco_err, self.kls = [], []
 
     def fit(self, X):
-
         if not self.is_trained:
-            reco_err, kls = self.train(X)
-
-            if self.verbose:
-                plt.figure(1)
-                plt.subplot(121)
-                plt.plot(reco_err)
-                plt.title("reco err")
-
-                plt.subplot(122)
-                plt.plot(kls)
-                plt.title("d_kl")
+            self.train(X)
 
         v = Variable(from_numpy(X.astype(np.float32)))
         lat = self.model.encoder(v.cpu()).detach().numpy()
@@ -81,6 +68,7 @@ class AutoencoderTSNE:
         v = Variable(from_numpy(X.astype(np.float32)))
         output = self.model(v)
         return nn.MSELoss(reduction="none")(output, v).sum(1).detach().numpy()
+
 
     def train(self, X):
 
@@ -108,7 +96,6 @@ class AutoencoderTSNE:
         )
         criterion = nn.MSELoss()
 
-        mses, kls = [], []
         v = Variable(from_numpy(X.astype(np.float32))).cuda(self.gpu)
         for epoch in tqdm(range(self.n_iter)):
 
@@ -123,11 +110,10 @@ class AutoencoderTSNE:
             loss.backward()
             optimizer.step()
 
-            mses.append(dist.item())
-            kls.append(kl.item())
+            self.reco_err.append(dist.item())
+            self.kls.append(kl.item())
 
         # disable gpu after training
         self.model.cpu()
-
         self.is_trained = True
-        return mses, kls
+
