@@ -42,7 +42,7 @@ def make_P(X, perplexity=30, metric="euclidiean"):
 
 
 def kl_divergence(lat, P, gpu):
-    dist = torch.nn.functional.pdist(lat.cpu(), 2).cuda(gpu)
+    dist = torch.nn.functional.pdist(lat, 2)
     dist = dist + 1.0
     dist = 1 / dist
     Q = dist / (torch.sum(dist))
