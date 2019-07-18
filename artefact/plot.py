@@ -100,7 +100,7 @@ def plot_trajs(t, sector, proj=Lambert93()):
             nb_lines,
             nb_cols,
             subplot_kw=dict(projection=proj),
-            figsize=(15, 25)
+            figsize=(15, 25),
         )
 
         for cluster, ax_ in tqdm(zip(range(-1, n_clusters_), ax_iter(ax))):
@@ -110,7 +110,7 @@ def plot_trajs(t, sector, proj=Lambert93()):
             tc = t.query(f"cluster == {cluster}")
             tc.plot(ax_, color=colors[cluster])
             vr = tc.data.vertical_rate.mean()
-            evolution = '=' if abs(vr) < 200 else '↗' if vr > 0 else '↘'
+            evolution = "=" if abs(vr) < 200 else "↗" if vr > 0 else "↘"
             ax_.set_title(f"v_rate:{vr:.0f}FL\nlen cluster:{len(tc)}")
 
             if sector is not None:
@@ -312,3 +312,4 @@ def clusters_plot3d(
             )
         else:
             plt.show()
+
