@@ -111,7 +111,7 @@ def plot_trajs(t, sector, proj=Lambert93()):
             tc.plot(ax_, color=colors[cluster])
             vr = tc.data.vertical_rate.mean()
             evolution = '=' if abs(vr) < 200 else '↗' if vr > 0 else '↘'
-            ax_.set_title(f"{tc.data.altitude.mean()/100:.0f}FL{evolution}\nlen cluster:{len(tc)}")
+            ax_.set_title(f"v_rate:{vr:.0f}FL\nlen cluster:{len(tc)}")
 
             if sector is not None:
                 ax_.set_extent(sector)
