@@ -80,7 +80,22 @@ class AutoencoderTSNE:
         return nn.MSELoss(reduction="none")(output, v).sum(1).detach().numpy()
 
     def train(self, X):
-        batches = self.nb_batches
+        dim_input = batch.shape[1]
+        # if network's architecture not specified, use (n, n/2, 5)
+        if self.model is None:
+            self.model = Autoencoder((dim_input, dim_input // 2, 2))
+
+        self.model.cuda(self.gpu)
+        # dirty hack
+        model_dim_input = next(self.model.parameters()).size()[1]
+        assert model_dim_input == dim_input
+        optimizer = torch.optim.Adam(
+            self.model.parameters(),
+            lr=self.lr,
+            weight_decay=self.weight_decay,
+        )
+        criterion = nn.MSELoss()
+
         for _ in tqdm(range(self.nb_batches)):
             idx = np.random.randint(len(X), size=self.batch_size)
             batch = X[idx, :]
@@ -89,24 +104,6 @@ class AutoencoderTSNE:
                 .float()
                 .cuda(self.gpu)
             )
-            # t[sample(t.flight_ids, 1000)]
-            dim_input = batch.shape[1]
-            # if network's architecture not specified, use (n, n/2, 5)
-            if self.model is None:
-                self.model = Autoencoder((dim_input, dim_input // 2, 2))
-
-            self.model.cuda(self.gpu)
-
-            # dirty hack
-            model_dim_input = next(self.model.parameters()).size()[1]
-            assert model_dim_input == dim_input
-
-            optimizer = torch.optim.Adam(
-                self.model.parameters(),
-                lr=self.lr,
-                weight_decay=self.weight_decay,
-            )
-            criterion = nn.MSELoss()
 
             v = Variable(from_numpy(batch.astype(np.float32))).cuda(self.gpu)
             for epoch in range(self.n_iter):
