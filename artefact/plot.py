@@ -13,6 +13,8 @@ from mpl_toolkits.mplot3d import Axes3D, proj3d
 from tqdm.autonotebook import tqdm
 from traffic.drawing import Lambert93, PlateCarree, countries, rivers
 
+from random import sample
+
 
 def anim_to_html(anim):
     plt.close(anim._fig)
@@ -108,6 +110,7 @@ def plot_trajs(t, sector, proj=Lambert93()):
             ax_.add_feature(rivers())
 
             tc = t.query(f"cluster == {cluster}")
+            tc = tc[sample(t.flight_ids, max(50, len(tc)))]
             tc.plot(ax_, color=colors[cluster])
             vr = tc.data.vertical_rate.mean()
             evolution = "=" if abs(vr) < 200 else "↗" if vr > 0 else "↘"
@@ -312,4 +315,3 @@ def clusters_plot3d(
             )
         else:
             plt.show()
-

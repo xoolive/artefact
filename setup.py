@@ -15,6 +15,7 @@ setup(
         "traffic",
         "matplotlib",
         "scipy",
+	"hdbscan",
     ],
     python_requires=">=3.6",
 )

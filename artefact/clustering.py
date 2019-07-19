@@ -90,9 +90,7 @@ class AutoencoderTSNE:
         model_dim_input = next(self.model.parameters()).size()[1]
         assert model_dim_input == dim_input
         optimizer = torch.optim.Adam(
-            self.model.parameters(),
-            lr=self.lr,
-            weight_decay=self.weight_decay,
+            self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay
         )
         criterion = nn.MSELoss()
 
