@@ -80,7 +80,7 @@ class AutoencoderTSNE:
         return nn.MSELoss(reduction="none")(output, v).sum(1).detach().numpy()
 
     def train(self, X):
-        dim_input = batch.shape[1]
+        dim_input = X.shape[1]
         # if network's architecture not specified, use (n, n/2, 5)
         if self.model is None:
             self.model = Autoencoder((dim_input, dim_input // 2, 2))
