@@ -19,7 +19,7 @@ def build_decoder(dims):
     return build_net(dims)[:-1] + [nn.Sigmoid()]
 
 
-class Autoencoder_PL(nn.Module):
+class Autoencoder(nn.Module):
     def __init__(self, layers):
         """Build a new encoder using the architecture specified with
     [arch_encoder] and [arch_decoder].

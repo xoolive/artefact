@@ -102,3 +102,10 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+checkpoints/
+lightning_logs/
+*.pkl
+*.ipynb
+.vscode/
+*code-workspace
