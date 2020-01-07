@@ -106,6 +106,6 @@ venv.bak/
 checkpoints/
 lightning_logs/
 *.pkl
-*.ipynb
+#*.ipynb
 .vscode/
 *code-workspace
