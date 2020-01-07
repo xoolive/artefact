@@ -86,9 +86,7 @@ def plot_trajs(t, sector, proj=Lambert93()):
     # -- dealing with the grid --
 
     nb_cols = 5
-    nb_lines = (1 + n_clusters_) // nb_cols + (
-        ((1 + n_clusters_) % nb_cols) > 0
-    )
+    nb_lines = (1 + n_clusters_) // nb_cols + (((1 + n_clusters_) % nb_cols) > 0)
 
     def ax_iter(axes):
         if len(axes.shape) == 1:
@@ -99,10 +97,7 @@ def plot_trajs(t, sector, proj=Lambert93()):
 
     with plt.style.context("traffic"):
         fig, ax = plt.subplots(
-            nb_lines,
-            nb_cols,
-            subplot_kw=dict(projection=proj),
-            figsize=(15, 25),
+            nb_lines, nb_cols, subplot_kw=dict(projection=proj), figsize=(15, 25),
         )
 
         for cluster, ax_ in tqdm(zip(range(-1, n_clusters_), ax_iter(ax))):
@@ -110,11 +105,13 @@ def plot_trajs(t, sector, proj=Lambert93()):
             ax_.add_feature(rivers())
 
             tc = t.query(f"cluster == {cluster}")
+            len_tc = len(tc)
             tc = tc[sample(tc.flight_ids, min(50, len(tc)))]
             tc.plot(ax_, color=colors[cluster])
             vr = tc.data.vertical_rate.mean()
+            alt = tc.data.altitude.mean() // 100
             evolution = "=" if abs(vr) < 200 else "↗" if vr > 0 else "↘"
-            ax_.set_title(f"v_rate:{vr:.0f}\nlen cluster:{len(tc)}")
+            ax_.set_title(f"{alt:.0f}FL{evolution}\nlen cluster:{len_tc}")
 
             if sector is not None:
                 ax_.set_extent(sector)
@@ -122,13 +119,7 @@ def plot_trajs(t, sector, proj=Lambert93()):
 
 
 def clusters_plot2d(
-    sector,
-    t,
-    nb_samples,
-    projection,
-    scaler=None,
-    plot_trajs=False,
-    plot_clust=None,
+    sector, t, nb_samples, projection, scaler=None, plot_trajs=False, plot_clust=None,
 ):
     with plt.style.context("traffic"):
         fig, ax = plt.subplots(subplot_kw=dict(projection=projection))
@@ -136,8 +127,7 @@ def clusters_plot2d(
         ax.add_feature(rivers())
         ax.set_extent(
             tuple(
-                x - 0.5 + (0 if i % 2 == 0 else 1)
-                for i, x in enumerate(sector.extent)
+                x - 0.5 + (0 if i % 2 == 0 else 1) for i, x in enumerate(sector.extent)
             )
         )
         sector.plot(ax, lw=5)
