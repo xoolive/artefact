@@ -35,13 +35,11 @@ def make_P(X, perplexity=30, metric="euclidiean"):
     P = _joint_probabilities(distances, perplexity)
     assert np.all(np.isfinite(P)), "All probabilities should be finite"
     assert np.all(P >= 0), "All probabilities should be non-negative"
-    assert np.all(P <= 1), (
-        "All probabilities should be less " "or then equal to one"
-    )
+    assert np.all(P <= 1), "All probabilities should be less " "or then equal to one"
     return P
 
 
-def kl_divergence(lat, P, gpu):
+def kl_divergence(lat, P):
     dist = torch.nn.functional.pdist(lat, 2)
     dist = dist + 1.0
     dist = 1 / dist

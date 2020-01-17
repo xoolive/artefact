@@ -9,19 +9,23 @@ from artefact import Autoencoder, AutoencoderTSNE
 
 
 def main(args):
-    traffic = Traffic.from_file(args.filename)
+    traffic = Traffic.from_file(args.data)
     list_features = ["track_unwrapped", "longitude", "latitude", "altitude"]
 
     nb_samples = len(traffic[0])
     nb_features = len(list_features)
 
     algo_clustering = AutoencoderTSNE(
-        gpus=args.gpus,
+        gpu=args.gpu,
         model=Autoencoder((nb_samples * nb_features, 32, 8, 2)),
+        learning_rate=args.learning_rate,
+        weight_decay=args.learning_rate,
         lambda_kl=args.lambda_kl,
         epochs=args.epochs,
+        batch_size=args.batch_size,
         algo_clustering=DBSCAN(eps=0.06, min_samples=20),
         distance_trajectory="euclidean",  # delta_max
+        savedir=args.savedir,
     )
 
     t_tsne = traffic.clustering(
@@ -31,18 +35,18 @@ def main(args):
         transform=MinMaxScaler(feature_range=(-1, 1)),
     ).fit_predict()
 
-    t_tsne.to_pickle("t_tsne.pkl")
+    t_tsne.to_parquet(f"{args.savedir}/t_tsne.parquet")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument("-f", dest="filename", type=Path, default="lszh.pkl")
-    parser.add_argument("-g", dest="gpus", type=str, default="0,1,2")
+    parser.add_argument("-d", dest="data", type=Path, default="data/lszh.parquet")
+    parser.add_argument("-o", dest="savedir", type=Path, default=".")
+    parser.add_argument("-g", dest="gpu", type=int, default=0)
     parser.add_argument("-e", dest="epochs", type=int, default=100)
-    parser.add_argument("-bs", dest="batch_size", type=int, default=100)
+    parser.add_argument("-bs", dest="batch_size", type=int, default=1000)
     parser.add_argument("-la", dest="lambda_kl", type=float, default=0.05)
     parser.add_argument("-lr", dest="learning_rate", type=float, default=1e-3)
     parser.add_argument("-wd", dest="weight_decay", type=float, default=1e-5)
-    parser.add_argument("-ag", dest="accumulated_grad", type=int, default=1)
     args = parser.parse_args()
     main(args)
