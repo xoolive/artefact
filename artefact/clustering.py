@@ -29,6 +29,7 @@ class AutoencoderTSNE:
         algo_clustering=DBSCAN(eps=0.3, min_samples=7),
         batch_size=1000,
         distance_trajectory="euclidean",
+        pretrained_path=None,
         savedir=None,
     ):
         self.device = get_device(gpu)
@@ -41,10 +42,14 @@ class AutoencoderTSNE:
         self.lambda_kl = lambda_kl
         self.distance_trajectory = distance_trajectory
         self.batch_size = batch_size
+        self.pretrained_path = pretrained_path
 
     def fit(self, X):
         self.X = X
-        self.train()
+        if self.pretrained_path is None:
+            self.train()
+        else:
+            self.load_model(self.pretrained_path)
         lat = self.get_latent()
         self.labels_ = self.algo_clustering.fit_predict(lat)
 

@@ -311,20 +311,24 @@ def clusters_plot3d(
             plt.show()
 
 
-def plot_latent_and_trajs(t, lat, savefig, airport="LSZH", runway=None):
+def plot_latent_and_trajs(
+    t, lat, savefig, plot_clusters=False, airport="LSZH", runway=None
+):
     if runway is not None:
         subset = t.query(f"runway == '{runway}' and initial_flow != 'N/A'")
     else:
         subset = t.query("initial_flow != 'N/A'")
+
     df = pd.DataFrame.from_records(
         [
             {"flight_id": id_, "x": x, "y": y}
             for (id_, x, y) in zip(list(f.flight_id for f in t), lat[:, 0], lat[:, 1],)
         ]
     )
-    stasts = df.merge(
-        subset.data[["flight_id", "simple", "initial_flow"]].drop_duplicates()
-    )
+    cols = ["flight_id", "simple", "initial_flow"]
+    if plot_clusters:
+        cols += ["cluster"]
+    stasts = df.merge(subset.data[cols].drop_duplicates())
 
     with plt.style.context("traffic"):
         text_style = dict(
@@ -368,10 +372,15 @@ def plot_latent_and_trajs(t, lat, savefig, airport="LSZH", runway=None):
             text_kw={**text_style},
         )
 
-        for (flow, d), color in zip(stasts.groupby("initial_flow"), colors):
+        if plot_clusters:
+            gb = "cluster"
+        else:
+            gb = "initial_flow"
+
+        for (flow, d), color in zip(stasts.groupby(gb), colors):
             d.plot.scatter(x="x", y="y", ax=ax, color=color, label=flow, alpha=0.4)
 
-            subset.query(f'initial_flow == "{flow}"')[:50].plot(
+            subset.query(f'{gb} == "{flow}"')[:50].plot(
                 m, color=color, linewidth=1.5, alpha=0.5
             )
 
