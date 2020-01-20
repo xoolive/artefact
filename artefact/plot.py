@@ -3,17 +3,21 @@ utility module to plot clusters from:
 https://github.com/lbasora/sectflow
 """
 from itertools import cycle, islice
+from random import sample
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from matplotlib import animation
 from matplotlib.patches import FancyArrowPatch
 from matplotlib.text import Annotation
 from mpl_toolkits.mplot3d import Axes3D, proj3d
 from tqdm.autonotebook import tqdm
-from traffic.drawing import Lambert93, PlateCarree, countries, rivers
+from traffic.drawing import Lambert93, EuroPP, PlateCarree, countries, rivers
+from traffic.drawing.markers import atc_tower
+from traffic.data import airports
 
-from random import sample
+from .clustering import get_latent
 
 
 def anim_to_html(anim):
@@ -305,3 +309,97 @@ def clusters_plot3d(
             )
         else:
             plt.show()
+
+
+def plot_latent_and_trajs(t, lat, savefig, airport="LSZH", runway=None):
+    if runway is not None:
+        subset = t.query(f"runway == '{runway}' and initial_flow != 'N/A'")
+    else:
+        subset = t.query("initial_flow != 'N/A'")
+    df = pd.DataFrame.from_records(
+        [
+            {"flight_id": id_, "x": x, "y": y}
+            for (id_, x, y) in zip(list(f.flight_id for f in t), lat[:, 0], lat[:, 1],)
+        ]
+    )
+    stasts = df.merge(
+        subset.data[["flight_id", "simple", "initial_flow"]].drop_duplicates()
+    )
+
+    with plt.style.context("traffic"):
+        text_style = dict(
+            verticalalignment="top",
+            horizontalalignment="right",
+            fontname="Ubuntu",
+            fontsize=18,
+            bbox=dict(facecolor="white", alpha=0.6, boxstyle="round"),
+        )
+
+        colors = [
+            "#1f77b4",
+            "#ff7f0e",
+            "#2ca02c",
+            "#d62728",
+            "#9467bd",
+            "#8c564b",
+            "#e377c2",
+            "#7f7f7f",
+            "#bcbd22",
+            "#17becf",
+        ]
+        fig = plt.figure(figsize=(15, 7.5))
+        ax = fig.add_subplot(121)
+        m = fig.add_subplot(122, projection=EuroPP())
+
+        m.add_feature(
+            countries(
+                edgecolor="white", facecolor="#d9dadb", alpha=1, linewidth=2, zorder=-2
+            )
+        )
+        m.outline_patch.set_visible(False)
+        m.background_patch.set_visible(False)
+
+        airports[airport].point.plot(
+            m,
+            shift=dict(units="dots", x=-15, y=-15),
+            marker=atc_tower,
+            s=300,
+            zorder=5,
+            text_kw={**text_style},
+        )
+
+        for (flow, d), color in zip(stasts.groupby("initial_flow"), colors):
+            d.plot.scatter(x="x", y="y", ax=ax, color=color, label=flow, alpha=0.4)
+
+            subset.query(f'initial_flow == "{flow}"')[:50].plot(
+                m, color=color, linewidth=1.5, alpha=0.5
+            )
+
+        ax.legend(prop=dict(family="Ubuntu", size=18))
+        ax.grid(linestyle="solid", alpha=0.5, zorder=-2)
+
+        # ax3.xaxis.set_tick_params(pad=20)
+        ax.set_xlabel("1st component on latent space", labelpad=10)
+        ax.set_ylabel("2nd component on latent space", labelpad=10)
+
+        fig.savefig(savefig)
+
+
+def plot_loss(loss, re_loss=None, kl_loss=None):
+    plt.figure(1)
+    plt.subplot(131)
+    plt.plot(loss)
+    plt.title("loss_evolution")
+    if re_loss is not None:
+        plt.subplot(132)
+        plt.plot(re_loss)
+        plt.title("re_evolution")
+    if kl_loss is not None:
+        plt.subplot(133)
+        plt.plot(kl_loss)
+        plt.title("kl_evolution")
+
+
+def plot_latent(X, model, device):
+    lat = get_latent(X, model, device)
+    plt.scatter(lat[:, 0], lat[:, 1], s=10)
