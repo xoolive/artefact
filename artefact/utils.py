@@ -1,50 +1,48 @@
-#!/usr/bin/env python
-
-"""
-`_joint_probabilities` and `make_P` from the sklearn librairy:
-https://github.com/scikit-learn/scikit-learn/blob/7813f7efb/sklearn/manifold/t_sne.py
-"""
-
-import torch
-import numpy as np
-from sklearn.metrics.pairwise import pairwise_distances
-from sklearn.manifold._utils import _binary_search_perplexity
-from scipy.spatial.distance import squareform
-
-MACHINE_EPSILON_NP = np.finfo(np.float32).eps
+from traffic.core import Traffic
+import pandas as pd
+from sklearn.preprocessing import MinMaxScaler
+from .clustering import AutoencoderTSNE
+from .ae import Autoencoder
 
 
-def delta_max(x, y, *args):
-    return np.max(np.abs(x - y))
+def pretrained_clust(
+    traffic_file,
+    list_features,
+    algo_clustering,
+    model,
+    pretrained_path,
+    to_pickle,
+    gpu=0,
+):
+    t = Traffic.from_file(traffic_file)
+    nb_samples = len(t[0])
+    nb_features = len(list_features)
 
-
-def _joint_probabilities(distances, desired_perplexity, verbose=0):
-    distances = distances.astype(np.float32, copy=True)
-    conditional_P = _binary_search_perplexity(
-        distances, None, desired_perplexity, verbose
+    ae_tsne = AutoencoderTSNE(
+        gpu=gpu,
+        model=model,
+        pretrained_path=pretrained_path,
+        algo_clustering=algo_clustering,
     )
-    P = conditional_P + conditional_P.T
-    sum_P = np.maximum(np.sum(P), MACHINE_EPSILON_NP)
-    P = np.maximum(squareform(P) / sum_P, MACHINE_EPSILON_NP)
-    return P
 
+    t_tsne = t.clustering(
+        nb_samples=None,
+        features=list_features,
+        clustering=ae_tsne,
+        transform=MinMaxScaler(feature_range=(-1, 1)),
+    ).fit_predict()
 
-def make_P(X, perplexity=30, metric="euclidiean"):
-    distances = pairwise_distances(X, metric=metric)
+    re = ae_tsne.score_samples()
+    re = MinMaxScaler(feature_range=(0, 1)).fit_transform(re.reshape(-1, 1)).flatten()
+    t_tsne_re = pd.DataFrame.from_records(
+        [dict(flight_id=f.flight_id, re=re) for f, re in zip(t_tsne, re)]
+    )
+    t_tsne_re = t_tsne.merge(t_tsne_re, on="flight_id")
 
-    P = _joint_probabilities(distances, perplexity)
-    assert np.all(np.isfinite(P)), "All probabilities should be finite"
-    assert np.all(P >= 0), "All probabilities should be non-negative"
-    assert np.all(P <= 1), "All probabilities should be less " "or then equal to one"
-    return P
-
-
-def kl_divergence(lat, P):
-    dist = torch.nn.functional.pdist(lat, 2)
-    dist = dist + 1.0
-    dist = 1 / dist
-    Q = dist / (torch.sum(dist))
-
-    kl_divergence = 2.0 * torch.dot(P, P / Q)
-
-    return kl_divergence
+    t_tsne_re.to_pickle(to_pickle)
+    print(
+        t_tsne_re.groupby(["cluster"]).agg(
+            {"flight_id": "nunique", "re": ["mean", "min", "max"]}
+        )
+    )
+    return ae_tsne, t_tsne_re
