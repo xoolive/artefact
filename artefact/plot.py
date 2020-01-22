@@ -109,17 +109,18 @@ def plot_trajs(t, sector, proj=Lambert93()):
             ax_.add_feature(rivers())
 
             tc = t.query(f"cluster == {cluster}")
-            len_tc = len(tc)
-            tc = tc[sample(tc.flight_ids, min(50, len(tc)))]
-            tc.plot(ax_, color=colors[cluster])
-            vr = tc.data.vertical_rate.mean()
-            alt = tc.data.altitude.mean() // 100
-            evolution = "=" if abs(vr) < 200 else "↗" if vr > 0 else "↘"
-            ax_.set_title(f"{alt:.0f}FL{evolution}\nlen cluster:{len_tc}")
+            if tc is not None:
+                len_tc = len(tc)
+                tc = tc[sample(tc.flight_ids, min(50, len(tc)))]
+                tc.plot(ax_, color=colors[cluster])
+                vr = tc.data.vertical_rate.mean()
+                alt = tc.data.altitude.mean() // 100
+                evolution = "=" if abs(vr) < 200 else "↗" if vr > 0 else "↘"
+                ax_.set_title(f"{alt:.0f}FL{evolution}\nlen cluster:{len_tc}")
 
-            if sector is not None:
-                ax_.set_extent(sector)
-                sector.plot(ax_, lw=2)
+                if sector is not None:
+                    ax_.set_extent(sector)
+                    sector.plot(ax_, lw=2)
 
 
 def clusters_plot2d(

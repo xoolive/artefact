@@ -1,5 +1,6 @@
 import logging
 import torch
+from torch import nn
 from sklearn.cluster import DBSCAN
 from .training import train
 
@@ -30,26 +31,26 @@ class AutoencoderTSNE:
         batch_size=1000,
         distance_trajectory="euclidean",
         pretrained_path=None,
-        savedir=None,
+        savepath=None,
     ):
         self.device = get_device(gpu)
         self.model = model
         self.algo_clustering = algo_clustering
         self.nb_iterations = nb_iterations
-        self.savedir = savedir
+        self.savepath = savepath
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
         self.lambda_kl = lambda_kl
         self.distance_trajectory = distance_trajectory
         self.batch_size = batch_size
         self.pretrained_path = pretrained_path
+        if self.pretrained_path is not None:
+            self.load_model(self.pretrained_path)
 
     def fit(self, X):
         self.X = X
         if self.pretrained_path is None:
             self.train()
-        else:
-            self.load_model(self.pretrained_path)
         lat = self.get_latent()
         self.labels_ = self.algo_clustering.fit_predict(lat)
 
@@ -61,9 +62,9 @@ class AutoencoderTSNE:
         """
         self.model.eval()
         self.model.to(self.device)
-        v = torch.as_tensor(self.X, dtype=torch.float, device=device)
+        v = torch.as_tensor(self.X, dtype=torch.float, device=self.device)
         with torch.no_grad():
-            output = self.model(v)
+            _, output = self.model(v)
             return nn.MSELoss(reduction="none")(output, v).sum(1).cpu().numpy()
 
     def load_model(self, path):
@@ -88,6 +89,6 @@ class AutoencoderTSNE:
             lr=self.learning_rate,
             weight_decay=self.weight_decay,
         )
-        if self.savedir is not None:
-            torch.save(self.model.state_dict(), f"{self.savedir}/model.pth")
+        if self.savepath is not None:
+            torch.save(self.model.state_dict(), f"{self.savepath}")
 

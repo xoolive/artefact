@@ -25,7 +25,7 @@ def main(args):
         batch_size=args.batch_size,
         algo_clustering=DBSCAN(eps=0.06, min_samples=20),
         distance_trajectory="euclidean",  # delta_max
-        savedir=args.savedir,
+        savepath=args.savepath,
     )
 
     t_tsne = traffic.clustering(
@@ -35,13 +35,13 @@ def main(args):
         transform=MinMaxScaler(feature_range=(-1, 1)),
     ).fit_predict()
 
-    t_tsne.to_parquet(f"{args.savedir}/t_tsne.parquet")
+    t_tsne.to_parquet(f"{args.savepath}/t_tsne.parquet")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("-d", dest="data", type=Path, default="data/lszh.parquet")
-    parser.add_argument("-o", dest="savedir", type=Path, default=".")
+    parser.add_argument("-o", dest="savepath", type=Path, default=".")
     parser.add_argument("-g", dest="gpu", type=int, default=0)
     parser.add_argument("-it", dest="nb_iterations", type=int, default=100)
     parser.add_argument("-bs", dest="batch_size", type=int, default=1000)
