@@ -15,8 +15,6 @@ def pretrained_clust(
     gpu=0,
 ):
     t = Traffic.from_file(traffic_file)
-    nb_samples = len(t[0])
-    nb_features = len(list_features)
 
     ae_tsne = AutoencoderTSNE(
         gpu=gpu,
