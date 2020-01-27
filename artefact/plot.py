@@ -5,6 +5,7 @@ https://github.com/lbasora/sectflow
 from itertools import cycle, islice
 from random import sample
 
+import altair as alt
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -13,9 +14,9 @@ from matplotlib.patches import FancyArrowPatch
 from matplotlib.text import Annotation
 from mpl_toolkits.mplot3d import Axes3D, proj3d
 from tqdm.autonotebook import tqdm
-from traffic.drawing import Lambert93, EuroPP, PlateCarree, countries, rivers
-from traffic.drawing.markers import atc_tower
 from traffic.data import airports
+from traffic.drawing import EuroPP, Lambert93, PlateCarree, countries, rivers
+from traffic.drawing.markers import atc_tower
 
 from .clustering import get_latent
 
@@ -104,23 +105,24 @@ def plot_trajs(t, sector, proj=Lambert93()):
             nb_lines, nb_cols, subplot_kw=dict(projection=proj), figsize=(15, 25),
         )
 
-        for cluster, ax_ in tqdm(zip(range(-1, n_clusters_), ax_iter(ax))):
+        for cluster, ax_ in tqdm(
+            zip(range(t.data.cluster.min(), n_clusters_), ax_iter(ax))
+        ):
             ax_.add_feature(countries())
             ax_.add_feature(rivers())
 
             tc = t.query(f"cluster == {cluster}")
-            if tc is not None:
-                len_tc = len(tc)
-                tc = tc[sample(tc.flight_ids, min(50, len(tc)))]
-                tc.plot(ax_, color=colors[cluster])
-                vr = tc.data.vertical_rate.mean()
-                alt = tc.data.altitude.mean() // 100
-                evolution = "=" if abs(vr) < 200 else "↗" if vr > 0 else "↘"
-                ax_.set_title(f"{alt:.0f}FL{evolution}\nlen cluster:{len_tc}")
+            len_tc = len(tc)
+            tc = tc[sample(tc.flight_ids, min(50, len(tc)))]
+            tc.plot(ax_, color=colors[cluster])
+            vr = tc.data.vertical_rate.mean()
+            alt = tc.data.altitude.mean() // 100
+            evolution = "=" if abs(vr) < 200 else "↗" if vr > 0 else "↘"
+            ax_.set_title(f"{alt:.0f}FL{evolution}\nlen cluster:{len_tc}")
 
-                if sector is not None:
-                    ax_.set_extent(sector)
-                    sector.plot(ax_, lw=2)
+            if sector is not None:
+                ax_.set_extent(sector)
+                sector.plot(ax_, lw=2)
 
 
 def clusters_plot2d(
@@ -413,3 +415,33 @@ def plot_loss(loss, re_loss=None, kl_loss=None):
 def plot_latent(X, model, device):
     lat = get_latent(X, model, device)
     plt.scatter(lat[:, 0], lat[:, 1], s=10)
+
+
+def dur_dist_plot(dur_dist):
+    return (
+        alt.Chart(dur_dist)
+        .transform_density(
+            "duration", as_=["duration", "density"], extent=[0, 70], groupby=["cluster"]
+        )
+        .mark_area(orient="horizontal")
+        .encode(
+            y="duration:Q",
+            color="cluster:N",
+            x=alt.X(
+                "density:Q",
+                stack="center",
+                impute=None,
+                title=None,
+                axis=alt.Axis(labels=False, values=[0], grid=False, ticks=True),
+            ),
+            column=alt.Column(
+                "cluster:N",
+                header=alt.Header(
+                    titleOrient="bottom", labelOrient="bottom", labelPadding=0,
+                ),
+            ),
+        )
+        .properties(width=100)
+        .configure_facet(spacing=0)
+        .configure_view(stroke=None)
+    )

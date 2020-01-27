@@ -44,3 +44,36 @@ def pretrained_clust(
         )
     )
     return ae_tsne, t_tsne_re
+
+
+def duration_cumdist_cluster(t):
+    durations = pd.DataFrame.from_records(
+        [
+            dict(flight_id=f.flight_id, duration=d)
+            for f, d in zip(t, [f.duration.seconds // 60 for f in t])
+        ]
+    )
+    return (
+        t.merge(durations, on="flight_id")
+        .cumulative_distance(False)
+        .eval(max_workers=10)
+        .groupby("cluster")
+        .agg({"flight_id": "nunique", "duration": "mean", "cumdist": "mean"})
+    )
+
+
+def duration_cumdist_flight(t):
+    durations = pd.DataFrame.from_records(
+        [
+            dict(flight_id=f.flight_id, duration=d)
+            for f, d in zip(t, [f.duration.seconds // 60 for f in t])
+        ]
+    )
+    return (
+        t.merge(durations, on="flight_id")
+        .cumulative_distance(False)
+        .eval(max_workers=10)
+        .groupby("flight_id")
+        .mean()
+        .reset_index()
+    )[["flight_id", "cluster", "duration", "cumdist"]]
