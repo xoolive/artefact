@@ -1,4 +1,5 @@
 import argparse
+import os
 from pathlib import Path
 
 from sklearn.cluster import DBSCAN
@@ -9,6 +10,9 @@ from artefact import Autoencoder, AutoencoderTSNE
 
 
 def main(args):
+    if not os.path.exists(args.savepath):
+        os.makedirs(args.savepath)
+
     traffic = Traffic.from_file(args.data)
     list_features = ["track_unwrapped", "longitude", "latitude", "altitude"]
 
@@ -25,7 +29,7 @@ def main(args):
         batch_size=args.batch_size,
         algo_clustering=DBSCAN(eps=0.06, min_samples=20),
         distance_trajectory="euclidean",  # delta_max
-        savepath=args.savepath,
+        savepath=f"{args.savepath}/model.pth",
     )
 
     t_tsne = traffic.clustering(
@@ -41,7 +45,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("-d", dest="data", type=Path, default="data/lszh.parquet")
-    parser.add_argument("-o", dest="savepath", type=Path, default=".")
+    parser.add_argument("-o", dest="savepath", type=Path, default="results")
     parser.add_argument("-g", dest="gpu", type=int, default=0)
     parser.add_argument("-it", dest="nb_iterations", type=int, default=100)
     parser.add_argument("-bs", dest="batch_size", type=int, default=1000)
