@@ -476,7 +476,7 @@ def plot_latent_and_trajs_outliers(
         outliers.query("initial_flow != 'N/A'")
         .groupby("flight_id")
         .agg({re_or_score: np.mean})
-        .sort_values(re_or_score, ascending=False)
+        .sort_values(re_or_score, ascending=(re_or_score=="score"))
         .head(nb_top_outliers)
     )
     print("\n\ntop outliers\n", top_outliers)
