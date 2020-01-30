@@ -14,6 +14,7 @@ from matplotlib.patches import FancyArrowPatch
 from matplotlib.text import Annotation
 from mpl_toolkits.mplot3d import Axes3D, proj3d
 from tqdm.autonotebook import tqdm
+from traffic.core import Traffic
 from traffic.data import airports
 from traffic.drawing import EuroPP, Lambert93, PlateCarree, countries, rivers
 from traffic.drawing.markers import atc_tower
@@ -417,7 +418,10 @@ def plot_latent(X, model, device):
     plt.scatter(lat[:, 0], lat[:, 1], s=10)
 
 
-def dur_dist_plot(dur_dist):
+def dur_dist_plot(dur_dist, to_json_for_lab=None):
+    if to_json_for_lab is not None:
+        alt.data_transformers.register("json", to_json_for_lab)
+    alt.data_transformers.enable("json")
     return (
         alt.Chart(dur_dist)
         .transform_density(
@@ -445,3 +449,108 @@ def dur_dist_plot(dur_dist):
         .configure_facet(spacing=0)
         .configure_view(stroke=None)
     )
+
+
+def plot_latent_and_trajs_outliers(
+    t,
+    lat,
+    outliers,
+    savefig,
+    nb_top_outliers=10,
+    airport="LSZH",
+    runway=None,
+    plot_callsigns=True,
+    re_or_score="re"
+):
+    if runway is not None:
+        subset = t.query(f"runway == '{runway}' and initial_flow != 'N/A'")
+    else:
+        subset = t.query("initial_flow != 'N/A'")
+    df = pd.DataFrame.from_records(
+        [
+            {"flight_id": id_, "x": x, "y": y}
+            for (id_, x, y) in zip(list(f.flight_id for f in t), lat[:, 0], lat[:, 1],)
+        ]
+    )
+    top_outliers = (
+        outliers.query("initial_flow != 'N/A'")
+        .groupby("flight_id")
+        .agg({re_or_score: np.mean})
+        .sort_values(re_or_score, ascending=False)
+        .head(nb_top_outliers)
+    )
+    print("\n\ntop outliers\n", top_outliers)
+    cols = ["flight_id", "simple", "initial_flow", "cluster"]
+    subset = df.merge(subset.data[cols].drop_duplicates())
+    subset_o = df.merge(outliers.data, on="flight_id")
+    subset_o = top_outliers.merge(subset_o, on="flight_id")
+
+    with plt.style.context("traffic"):
+        text_style = dict(
+            verticalalignment="top",
+            horizontalalignment="right",
+            fontname="Ubuntu",
+            fontsize=18,
+            bbox=dict(facecolor="white", alpha=0.6, boxstyle="round"),
+        )
+        colors = [
+            "#1f77b4",
+            "#ff7f0e",
+            "#2ca02c",
+            "#d62728",
+            "#9467bd",
+            "#8c564b",
+            "#e377c2",
+            "#7f7f7f",
+            "#bcbd22",
+            "#17becf",
+        ]
+
+        fig = plt.figure(figsize=(30, 15))
+        ax = fig.add_subplot(121)
+        m = fig.add_subplot(122, projection=EuroPP())
+        m.add_feature(
+            countries(
+                edgecolor="white", facecolor="#d9dadb", alpha=1, linewidth=2, zorder=-2
+            )
+        )
+        m.outline_patch.set_visible(False)
+        m.background_patch.set_visible(False)
+
+        airports[airport].point.plot(
+            m,
+            shift=dict(units="dots", x=-15, y=-15),
+            marker=atc_tower,
+            s=300,
+            zorder=5,
+            text_kw={**text_style},
+        )
+
+        subset.plot.scatter(
+            x="x", y="y", ax=ax, color="#aaaaaa", alpha=0.4,
+        )
+        for (flow, d), color in zip(subset_o.groupby("cluster"), colors):
+            d.plot.scatter(
+                x="x", y="y", ax=ax, color=color, label=flow, alpha=0.4, s=100
+            )
+            for f in Traffic(d):
+                f.plot(
+                    m, linewidth=3, label=f"{f.callsign}, {f.stop:%b %d}", color=color,
+                )
+                if plot_callsigns:
+                    point = subset_o.query(f'flight_id == "{f.flight_id}"').iloc[0]
+                    ax.text(
+                        point.x + 0.5,
+                        point.y + 0.5,
+                        f"{f.callsign}, {f.stop:%b %d}",
+                        **{
+                            **text_style,
+                            **dict(horizontalalignment="left", fontsize=15),
+                        },
+                    )
+        # ax.legend(prop=dict(family="Ubuntu", size=18))
+        ax.grid(linestyle="solid", alpha=0.5, zorder=-2)
+        ax.set_xlabel("1st component on latent space", labelpad=10)
+        ax.set_ylabel("2nd component on latent space", labelpad=10)
+
+    fig.savefig(savefig)

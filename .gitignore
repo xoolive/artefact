@@ -109,3 +109,4 @@ lightning_logs/
 #*.ipynb
 .vscode/
 *code-workspace
+results

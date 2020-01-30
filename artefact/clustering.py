@@ -1,7 +1,12 @@
 import logging
+from time import time
+
 import torch
-from torch import nn
 from sklearn.cluster import DBSCAN
+from sklearn.mixture import GaussianMixture
+from sklearn.preprocessing import MinMaxScaler
+from torch import nn
+
 from .training import train
 
 
@@ -48,11 +53,14 @@ class AutoencoderTSNE:
             self.load_model(self.pretrained_path)
 
     def fit(self, X):
+        ti = time()
         self.X = X
         if self.pretrained_path is None:
             self.train()
         lat = self.get_latent()
         self.labels_ = self.algo_clustering.fit_predict(lat)
+        tf = time()
+        logging.info("Fit time:  ", tf - ti)
 
     def get_latent(self):
         return get_latent(self.X, self.model, self.device)
@@ -65,7 +73,23 @@ class AutoencoderTSNE:
         v = torch.as_tensor(self.X, dtype=torch.float, device=self.device)
         with torch.no_grad():
             _, output = self.model(v)
-            return nn.MSELoss(reduction="none")(output, v).sum(1).cpu().numpy()
+            re = nn.MSELoss(reduction="none")(output, v).sum(1).cpu().numpy()
+            re = (
+                MinMaxScaler(feature_range=(0, 1))
+                .fit_transform(re.reshape(-1, 1))
+                .flatten()
+            )
+
+        scores = None
+        if isinstance(self.algo_clustering, GaussianMixture):
+            scores = self.algo_clustering.score_samples(self.get_latent())
+            scores = (
+                MinMaxScaler(feature_range=(0, 1))
+                .fit_transform(scores.reshape(-1, 1))
+                .flatten()
+            )
+
+        return re, scores
 
     def load_model(self, path):
         self.model.load_state_dict(torch.load(path))
@@ -91,4 +115,3 @@ class AutoencoderTSNE:
         )
         if self.savepath is not None:
             torch.save(self.model.state_dict(), f"{self.savepath}")
-
