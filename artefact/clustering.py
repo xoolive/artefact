@@ -28,8 +28,8 @@ class AutoencoderTSNE:
         self,
         gpu=0,
         model=None,
-        learning_rate=0.001,
-        weight_decay=0.01,
+        learning_rate=1e-3,
+        weight_decay=1e-5,
         lambda_kl=0.05,
         nb_iterations=500,
         algo_clustering=DBSCAN(eps=0.3, min_samples=7),
@@ -91,7 +91,7 @@ class AutoencoderTSNE:
 
         return re, scores
 
-    def load_model(self, path):
+    def load_weights(self, path):
         self.model.load_state_dict(torch.load(path))
 
     def train(self):
@@ -103,8 +103,8 @@ class AutoencoderTSNE:
         assert model_dim_input == dim_input
 
         self.model, self.loss = train(
-            self.model,
-            self.X,
+            model=self.model,
+            X=self.X,
             device=self.device,
             nb_iterations=self.nb_iterations,
             batch_size=self.batch_size,
@@ -115,3 +115,4 @@ class AutoencoderTSNE:
         )
         if self.savepath is not None:
             torch.save(self.model.state_dict(), f"{self.savepath}")
+        return self.model, self.loss

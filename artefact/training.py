@@ -61,10 +61,6 @@ def train(
     lr=1e-3,
     weight_decay=1e-5,
 ):
-    torch.manual_seed(0)
-    torch.cuda.manual_seed_all(0)
-    torch.backends.cudnn.deterministic = True
-    np.random.seed(0)
 
     model.to(device)
     model.train()

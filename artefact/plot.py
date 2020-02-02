@@ -398,7 +398,7 @@ def plot_latent_and_trajs(
         fig.savefig(savefig)
 
 
-def plot_loss(loss, re_loss=None, kl_loss=None):
+def plot_loss(loss, re_loss=None, kl_loss=None, savefig=None):
     plt.figure(1)
     plt.subplot(131)
     plt.plot(loss)
@@ -411,6 +411,8 @@ def plot_loss(loss, re_loss=None, kl_loss=None):
         plt.subplot(133)
         plt.plot(kl_loss)
         plt.title("kl_evolution")
+    if savefig is not None:
+        plt.savefig(savefig)
 
 
 def plot_latent(X, model, device):
@@ -460,7 +462,7 @@ def plot_latent_and_trajs_outliers(
     airport="LSZH",
     runway=None,
     plot_callsigns=True,
-    re_or_score="re"
+    re_or_score="re",
 ):
     if runway is not None:
         subset = t.query(f"runway == '{runway}' and initial_flow != 'N/A'")
@@ -476,7 +478,7 @@ def plot_latent_and_trajs_outliers(
         outliers.query("initial_flow != 'N/A'")
         .groupby("flight_id")
         .agg({re_or_score: np.mean})
-        .sort_values(re_or_score, ascending=(re_or_score=="score"))
+        .sort_values(re_or_score, ascending=(re_or_score == "score"))
         .head(nb_top_outliers)
     )
     print("\n\ntop outliers\n", top_outliers)
