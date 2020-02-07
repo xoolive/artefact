@@ -464,6 +464,10 @@ def plot_latent_and_trajs_outliers(
     plot_callsigns=True,
     re_or_score="re",
 ):
+    outliers = outliers.query("initial_flow != 'N/A'")
+    if outliers is None:
+        return
+    
     if runway is not None:
         subset = t.query(f"runway == '{runway}' and initial_flow != 'N/A'")
     else:
