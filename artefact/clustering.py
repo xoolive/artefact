@@ -50,7 +50,7 @@ class AutoencoderTSNE:
         self.batch_size = batch_size
         self.pretrained_path = pretrained_path
         if self.pretrained_path is not None:
-            self.load_model(self.pretrained_path)
+            self.load_weights(self.pretrained_path)
 
     def fit(self, X):
         ti = time()

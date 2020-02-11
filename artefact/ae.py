@@ -3,16 +3,18 @@ import numpy as np
 from torch import nn, optim
 
 
-def build_net(dims):
+def build_net(dims,reluout=True):
     ret = []
-    for n1, n2 in zip(dims[:-1], dims[1:]):
+    n = len(dims[:-1])
+    for i,(n1, n2) in enumerate(zip(dims[:-1], dims[1:])):
         ret.append(nn.Linear(n1, n2))
-        ret.append(nn.ReLU())
+        if i<n-1 or reluout:
+            ret.append(nn.ReLU())
     return ret
 
 
-def build_encoder(dims):
-    return build_net(dims)
+def build_encoder(dims,reluout=True):
+    return build_net(dims,reluout)
 
 
 def build_decoder(dims):
@@ -20,7 +22,7 @@ def build_decoder(dims):
 
 
 class Autoencoder(nn.Module):
-    def __init__(self, layers):
+    def __init__(self, layers,reluout=True):
         """Build a new encoder using the architecture specified with
     [arch_encoder] and [arch_decoder].
         """
@@ -34,7 +36,7 @@ class Autoencoder(nn.Module):
             arch_encoder = layers[: i + 1]
             arch_decoder = layers[i:]
 
-        self.encoder = nn.Sequential(*build_encoder(arch_encoder))
+        self.encoder = nn.Sequential(*build_encoder(arch_encoder,reluout))
 
         arch_decoder = (
             list(reversed(arch_encoder))
@@ -43,6 +45,8 @@ class Autoencoder(nn.Module):
         )
 
         self.decoder = nn.Sequential(*build_decoder(arch_decoder))
+        print("encoder",self.encoder)
+        print("decoder",self.decoder)
 
     def forward(self, x, **kwargs):
         lat = self.encoder(x)
