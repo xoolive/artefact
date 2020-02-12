@@ -43,8 +43,10 @@ class Autoencoder(nn.Module):
             if arch_decoder is None
             else arch_decoder
         )
-
-        self.decoder = nn.Sequential(*build_decoder(arch_decoder))
+        decode = build_decoder(arch_decoder)
+        if not reluout:
+            decode = [nn.ReLU()]+decode
+        self.decoder = nn.Sequential(*decode)
         print("encoder",self.encoder)
         print("decoder",self.decoder)
 
